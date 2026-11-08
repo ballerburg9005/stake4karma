@@ -1,0 +1,21 @@
+name: Test JavaScript and compile Solidity
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run SDK and server tests
+        run: npm test
+      - name: Compile Solidity escrow with solc 0.8.30
+        run: npm exec --yes --package=solc@0.8.30 -- solcjs --bin contracts/Stake4Karma.sol
