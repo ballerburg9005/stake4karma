@@ -1,0 +1,12 @@
+[
+  {"type":"function","name":"depositNative","stateMutability":"payable","inputs":[{"name":"publicKey","type":"bytes32"}],"outputs":[]},
+  {"type":"function","name":"depositToken","stateMutability":"nonpayable","inputs":[{"name":"asset","type":"address"},{"name":"amount","type":"uint256"},{"name":"publicKey","type":"bytes32"}],"outputs":[]},
+  {"type":"function","name":"requestExit","stateMutability":"nonpayable","inputs":[{"name":"asset","type":"address"}],"outputs":[]},
+  {"type":"function","name":"withdraw","stateMutability":"nonpayable","inputs":[{"name":"asset","type":"address"}],"outputs":[]},
+  {"type":"function","name":"positionOf","stateMutability":"view","inputs":[{"name":"wallet","type":"address"},{"name":"asset","type":"address"}],"outputs":[{"name":"publicKey","type":"bytes32"},{"name":"amount","type":"uint256"},{"name":"active","type":"bool"},{"name":"withdrawalAvailableAt","type":"uint64"},{"name":"exitRequestedAt","type":"uint64"}]},
+  {"type":"function","name":"keyOf","stateMutability":"view","inputs":[{"name":"wallet","type":"address"}],"outputs":[{"name":"","type":"bytes32"}]},
+  {"type":"event","name":"KeyBound","anonymous":false,"inputs":[{"name":"wallet","type":"address","indexed":true},{"name":"publicKey","type":"bytes32","indexed":true}]},
+  {"type":"event","name":"Deposited","anonymous":false,"inputs":[{"name":"wallet","type":"address","indexed":true},{"name":"asset","type":"address","indexed":true},{"name":"amount","type":"uint256","indexed":false}]},
+  {"type":"event","name":"ExitRequested","anonymous":false,"inputs":[{"name":"wallet","type":"address","indexed":true},{"name":"asset","type":"address","indexed":true},{"name":"withdrawalAvailableAt","type":"uint256","indexed":false}]},
+  {"type":"event","name":"Withdrawn","anonymous":false,"inputs":[{"name":"wallet","type":"address","indexed":true},{"name":"asset","type":"address","indexed":true},{"name":"amount","type":"uint256","indexed":false}]}
+]

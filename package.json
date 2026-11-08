@@ -1,0 +1,11 @@
+{
+  "name": "stake4karma",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "Testnet browser wallet stake-backed leaderboard and portable credential SDK",
+  "exports": { ".": "./src/stake.js" },
+  "scripts": { "start": "node server.js", "test": "node --test" },
+  "engines": { "node": ">=22" },
+  "license": "MIT"
+}

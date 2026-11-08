@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0d1220">
+  <title>Stake4Karma · Lock coins. Prove commitment.</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <div class="ambient a1"></div><div class="ambient a2"></div>
+  <header class="top"><a href="/" class="logo"><span class="logo-icon">✳</span> Stake<span>4</span>Karma</a><div class="header-right"><span id="networkPill" class="pill">Base Sepolia · testnet</span><button id="connectBtn" class="button secondary">Connect wallet</button></div></header>
+  <main class="shell">
+    <section class="hero">
+      <div class="eyebrow"><span class="dot"></span> Proof of locked stake · browser-wallet demo</div>
+      <h1>Lock coins.<br><em>Prove commitment.</em></h1>
+      <p>Make a portable cryptographic identity, lock test ETH from your own wallet, and climb a high-score board. The coins remain yours to withdraw under the contract's rules.</p>
+      <div class="hero-stats"><div><b>0</b><span>Fees collected by Stake4Karma</span></div><div><b>1</b><span>Read-only lookup to verify a stake</span></div><div><b>∞</b><span>Apps that can verify the same key</span></div></div>
+    </section>
+    <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+    <div id="configWarning" class="warning" hidden>⚠ No testnet contract configured. Registration works, but staking and verification require deployment. See README setup.</div>
+    <section class="columns">
+      <div class="steps">
+        <article class="panel">
+          <div class="step-head"><span class="step-number">01</span><div><h2>Connect a wallet</h2><p>MetaMask or another injected EVM wallet; no seed phrases shared.</p></div></div>
+          <div id="walletStatus" class="wallet-status">Not connected</div>
+          <div id="balance" class="muted tiny"></div>
+        </article>
+        <article class="panel">
+          <div class="step-head"><span class="step-number">02</span><div><h2>Make your portable key</h2><p>Default: generate an Ed25519 key locally. Or import your own saved credential.</p></div></div>
+          <div class="row-buttons"><button id="createBtn" class="button secondary">Generate identity</button><label class="button ghost file-button">Import key file<input id="importFile" type="file" accept=".json,application/json" hidden></label></div>
+          <label for="importPassword" class="field-label">Backup password (for imported encrypted files)</label>
+          <input id="importPassword" type="password" placeholder="Password if the file is encrypted" autocomplete="off">
+          <div class="identity-display"><span class="tiny muted">Public Ed25519 key</span><code id="identityPublic">No identity loaded</code></div>
+          <div class="separator"></div>
+          <p class="muted small">A new key exists only in this browser tab until you save a backup. Never upload your private key to this server.</p>
+          <label for="backupPassword" class="field-label">Password for encrypted backup (10+ characters)</label>
+          <div class="row-buttons"><input id="backupPassword" type="password" placeholder="Choose a strong password" autocomplete="new-password"><button id="backupBtn" class="button secondary">Download backup</button></div>
+          <div id="backupStatus" class="tiny muted">Save a backup before you stake. Lost key = lost portable identity (wallet still controls withdrawals).</div>
+        </article>
+        <article class="panel">
+          <div class="step-head"><span class="step-number">03</span><div><h2>Register a name</h2><p>Prove key ownership by signing a one-time challenge. No wallet transaction needed.</p></div></div>
+          <label for="handle" class="field-label">Your public nickname</label>
+          <div class="row-buttons"><input id="handle" type="text" maxlength="24" placeholder="e.g. archiveKeeper" spellcheck="false"><button id="registerBtn" class="button secondary">Register</button></div>
+          <div id="registeredStatus" class="tiny muted">Registrations live in a local JSON file; only real on-chain locks count in rankings.</div>
+        </article>
+        <article class="panel stake-panel">
+          <div class="step-head"><span class="step-number">04</span><div><h2>Stake test ETH</h2><p>Your browser wallet signs the deposit. The contract binds your public key to the locked ETH.</p></div></div>
+          <label for="stakeAmount" class="field-label">Amount (Base Sepolia test ETH)</label>
+          <div class="row-buttons"><div class="amount-input"><input id="stakeAmount" type="text" inputmode="decimal" value="0.001" placeholder="0.001"><span>ETH</span></div><button id="stakeBtn" class="button primary">Lock coins ↗</button></div>
+          <div class="position"><span class="tiny muted">Your verified on-chain position</span><strong id="positionText">Not checked</strong><small id="positionMeta"></small></div>
+          <div class="row-buttons exit-row"><button id="exitBtn" class="button ghost">Request exit</button><button id="withdrawBtn" class="button ghost">Withdraw after delay</button></div>
+          <p class="muted tiny">Exiting immediately removes a stake from rankings after chain confirmation. Withdrawal becomes possible only after the contract's holding and exit periods have elapsed.</p>
+          <a id="txLink" class="explorer" href="https://sepolia.basescan.org/" target="_blank" rel="noopener noreferrer" hidden>View transaction on BaseScan ↗</a>
+        </article>
+      </div>
+      <aside class="leaderboard panel">
+        <div class="board-top"><div><span class="eyebrow">Live verification</span><h2>High scores <span class="trophy">✳</span></h2><p>Ranked by ETH actually locked on Base Sepolia. No self-reported balances.</p></div><button id="refreshBtn" class="refresh" title="Refresh leaderboard" aria-label="Refresh leaderboard">↻</button></div>
+        <div class="board-metrics"><div><strong id="entryCount">—</strong><span>Verified stakers</span></div><div><strong id="totalLocked">—</strong><span>ETH locked</span></div></div>
+        <div id="leaderboardBody" class="board-rows"><p class="empty">Checking on-chain stakes…</p></div>
+        <div class="board-footer"><span id="boardTime">Not refreshed</span><span>Read-only verification · no gas</span></div>
+      </aside>
+    </section>
+    <section class="footnote"><b>Testnet only.</b> Base Sepolia ETH has no financial value. No real ETH should be deposited into these unaudited contracts. Registration is centralized for this leaderboard demo; the wallet/key binding and active stake are verifiable by any application directly on-chain. PGP key importing is not part of this first testing build.</section>
+  </main>
+  <footer>Stake4Karma · proof of commitment without spending the stake · <a href="https://github.com/ballerburg9005/stake4karma" target="_blank" rel="noopener noreferrer">GitHub ↗</a></footer>
+</body>
+</html>
