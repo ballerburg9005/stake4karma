@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Stake4Karma · Independent Withdrawal</title>
+<link rel="stylesheet" href="./styles.css"><script type="module" src="./recover.js"></script>
+</head>
+<body>
+<header class="top"><a href="./" class="logo">✳ Stake<span>4</span>Karma</a><span class="pill">Base Sepolia · recovery</span></header>
+<main class="shell">
+<section class="hero"><div class="eyebrow">No registration server · no identity backup needed</div>
+<h1>Recover your<br><em>locked coins.</em></h1>
+<p>The wallet that originally deposited is the only wallet that can request exit or withdraw. This tool needs only the original wallet, chain, and contract address — no Stake4Karma private identity key or website account.</p></section>
+<div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+<div class="panel" style="max-width:740px;margin:0 auto 36px;">
+ <label class="field-label" for="contract">Contract address on Base Sepolia</label>
+ <input id="contract" placeholder="0x…" spellcheck="false" autocomplete="off" style="width:100%">
+ <label class="field-label" for="asset">Asset: zero address for native ETH, or ERC-20 token contract</label>
+ <input id="asset" spellcheck="false" style="width:100%" value="0x0000000000000000000000000000000000000000">
+ <div class="row-buttons" style="margin-top:18px"><button class="button secondary" id="connect">Connect original wallet</button><button class="button secondary" id="check">Check on-chain position</button></div>
+ <div class="position"><span class="tiny muted">Verified position</span><strong id="amount">Not checked</strong><small id="status"></small></div>
+ <div class="row-buttons"><button id="exit" class="button ghost">Request exit</button><button id="withdraw" class="button primary">Withdraw when eligible</button></div>
+ <div class="tiny muted" style="margin-top:15px">The contract enforces its hold and exit delays. No website can override them. Transactions cost network gas. This tool does not ask for a seed phrase.</div>
+ <a id="txLink" class="explorer" href="#" hidden target="_blank" rel="noopener noreferrer">View transaction on BaseScan ↗</a>
+</div>
+<div class="footnote">This independent fallback is part of the downloadable source and can be served from any HTTPS origin or localhost. If every website disappears, you can also use a verified block explorer's Write Contract interface or call <code>requestExit(asset)</code> and <code>withdraw(asset)</code> directly with a wallet. Always verify the contract address.</div>
+</main><footer><a href="./">Back to leaderboard</a> · <a href="https://github.com/ballerburg9005/stake4karma">Source code</a></footer>
+</body></html>

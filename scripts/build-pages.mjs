@@ -1,0 +1,10 @@
+import {cp,mkdir,rm} from 'node:fs/promises';
+import {fileURLToPath} from 'node:url';
+import {dirname,resolve,join} from 'node:path';
+const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
+const out=join(root,'dist');
+await rm(out,{recursive:true,force:true});
+await mkdir(out,{recursive:true});
+await cp(join(root,'site'),out,{recursive:true});
+await cp(join(root,'src/stake.js'),join(out,'stake.js'));
+console.log('Built standalone static website in dist/ — no API server or runtime dependencies');

@@ -1,118 +1,99 @@
-# Stake4Karma
+# Stake4Karma · serverless demo (v0.3)
 
-**Lock testnet ETH. Prove you locked it. Use the same cryptographic identity across applications.**
+**Lock coins, prove your commitment, spend no stake.** This project contains a zero-dependency JavaScript SDK, a non-upgradeable Solidity escrow, and an **entirely static browser demo** that can run on GitHub Pages, any other HTTPS host, or localhost. The demo stores registration, nicknames, wallet associations, and active stakes **in the smart contract**, not in an administrator's database.
 
-A dependency-free JavaScript SDK, ownerless Solidity escrow, and browser-based testing app with a public high-score board. This is experimental software, built for **Base Sepolia TESTNET**. It is **not audited and is not safe for real money**.
+> **TESTNET RESEARCH SOFTWARE.** The only configured chain in the static demo is **Base Sepolia** (84532). Testnet ETH is not valuable. The Solidity contract and browser app are **unaudited**. Do not deposit real coins or deploy the demo on mainnet.
 
-![Status](https://img.shields.io/badge/status-testnet%20prototype-orange) ![Runtime](https://img.shields.io/badge/Node-22%2B-green)
+## Quickest way to use the GitHub Pages website
 
-## What you can test
+1. In this repository open **Settings → Pages → Build and deployment → Source → GitHub Actions**. This one-time GitHub configuration must be performed by a repository admin. A workflow at `.github/workflows/pages.yml` publishes the static site after pushes to `main`. The repository's public site will typically be `https://ballerburg9005.github.io/stake4karma/` **after** deployment succeeds.
+2. Someone (for now, you) must deploy the **new v0.3** contract from `contracts/Stake4Karma.sol` on **Base Sepolia**. See the instructions below. A website cannot deploy it without a wallet-approved transaction.
+3. Open the hosted website, paste the **deployed contract address**, and select **Use contract**. The address is stored only in this browser's local storage. Copy **Share this board** for a URL carrying `?contract=0x…`. Later the maintainer can publish a default verified contract address in the app.
+4. Connect MetaMask (Base Sepolia), generate an Ed25519 credential key or import a Stake4Karma backup, and **download a password-encrypted backup**.
+5. Enter a nickname and click **Register**. This is a **wallet-approved on-chain transaction**, not a free server registration. The nickname is publicly visible, not unique, and stored permanently in chain history.
+6. Click **Lock coins** to deposit some Base Sepolia test ETH. This is a second wallet-approved transaction. Once mined, it will be independently checked and ranked. **Refresh** shows all active positions in the contract's directory, up to the prototype's first 500 participant entries.
+7. Request exit. The score becomes inactive on-chain immediately when confirmed, though the funds remain in escrow. After both delays, click Withdraw and MetaMask returns the ETH to your original wallet.
 
-1. Open the app on `http://localhost:3000` with MetaMask or an injected EVM wallet.
-2. Connect to Base Sepolia, create a portable Ed25519 identity (or import one from a previously saved backup).
-3. Download a password-encrypted private-key backup **before you deposit**. The private key never leaves your browser.
-4. Register a nickname: the browser signs a short challenge, and the Node test server stores only your *public* credential, wallet address, and nickname in `data/registrations.json`.
-5. Lock test ETH with a MetaMask-confirmed transaction. The escrow contract ties the wallet to the public credential and holds the deposited ETH.
-6. Watch the leaderboard show only **on-chain verified active deposits**, sorted by locked ETH. Refresh the board, or request exit and see the entry disappear after its brief 15-second cache expires.
-7. Once your test contract's withdrawal period passes, withdraw the test ETH through the wallet.
-
-**A user cannot submit an invented number to the leaderboard.** The server uses its own Ethereum RPC endpoint to call `positionOf(wallet, nativeAsset)` and compares the public key recorded by the contract to the registration. Registration *alone* never gives a score. This is a simple trustful centralized *index of names*, not a centralized staking authority. Other dapps can ignore this server and use the SDK to verify the same wallet/key/contract independently.
-
-## Quick start
-
-Install **Node.js 22+**. The project has **no npm dependencies** for the web app, server, and unit tests.
-
-```bash
-npm test                 # 8 automated JavaScript tests, mocked blockchain RPC
-cp .env.example .env     # Unix/macOS; on Windows copy the file manually
-npm start                # http://localhost:3000
-```
-
-It starts with no contract deployed. You can connect a wallet, generate/import a key, back it up and register a name, but **on-chain staking stays disabled** until you deploy a contract and set its address.
+**Important:** Registering a key, locking coins, requesting exit, and withdrawing all cost **network gas**. Checking whether an identity has active coins locked uses a single `eth_call` and **does not cost on-chain gas**. ETH itself is not spent by staking: it is transferred into the escrow and returned on authorized withdrawal, subject to the contract's rules and risks.
 
 ## Deploy your own TESTNET contract
 
-An on-chain contract cannot be installed by a website or GitHub automatically on behalf of the user. Deployment is a real wallet-approved transaction, requiring testnet ETH for gas. No common or verified deployment is bundled in this project.
+1. Obtain a small amount of **Base Sepolia test ETH** in a disposable browser wallet; configure Base Sepolia with RPC `https://sepolia.base.org`, chain ID **84532**, explorer `https://sepolia.basescan.org`.
+2. Open [Remix Solidity IDE](https://remix.ethereum.org/). Copy **the current `contracts/Stake4Karma.sol`** into a new Solidity file. Compile using **Solidity 0.8.30** (or compatible 0.8.24+).
+3. In **Deploy & Run**, select **Injected Provider – MetaMask**, verify the account is on Base Sepolia, and deploy `Stake4Karma` using constructor values `60, 60` (60-second minimum hold / 60-second exit delay). Never reuse the short demonstration delays to claim strong spam resistance.
+4. Confirm the deployment transaction in MetaMask. Copy the **new contract address** from Remix or BaseScan. Paste it into the Pages app's contract field. The app checks that the chain is Base Sepolia, there is code at that address, and it responds to the v0.3 directory interface. This does **not** prove that arbitrary bytecode is safe: inspect and verify the source before staking.
+5. Share the URL containing `?contract=0x…` with other testers. They can register and stake from their own wallets without hosting an app server.
 
-1. Switch MetaMask to **Base Sepolia** (chain ID **84532**, RPC `https://sepolia.base.org`). Get **free, valueless test ETH** from a Base Sepolia faucet. [Base network docs](https://docs.base.org/chain/network-information) and [Base Sepolia explorer](https://sepolia.basescan.org/) are useful references.
-2. Visit [Remix Solidity IDE](https://remix.ethereum.org/). Create a file named `Stake4Karma.sol`, paste the source of `contracts/Stake4Karma.sol` from this repository, and compile it with Solidity `0.8.24` or later in the `0.8.x` range.
-3. In Remix's **Deploy & Run Transactions**, choose **Injected Provider – MetaMask**, and confirm you are on **Base Sepolia**. Deploy `Stake4Karma` with constructor arguments:
+There is no shared deployed contract address in this repository at the time of writing. A *v0.2* deployment does **not** support the new `entryAt` and `participantCount` functions needed for serverless rankings. Deploy the current v0.3 source.
 
-   - `minHoldSeconds = 60`
-   - `exitDelaySeconds = 60`
+## When GitHub, the demo, or a central service goes away
 
-   These short periods are **only recommended for disposable testnet demonstrations**. A 30-day minimum hold and seven-day exit delay would be `2592000, 604800`. The values are fixed forever at contract deployment; there is no administrator to edit them.
-4. After the wallet confirms deployment, copy the **contract's deployed address** (not the deployer's wallet address) into `.env`:
+**Your withdrawal is not authorized by a website. It is authorized by your original wallet and contract code.** You need the wallet that deposited, the contract address, the correct network, and sufficient gas for the exit and withdrawal transactions. You **do not** need an Ed25519 backup, a GitHub login, the original domain, or a server database to withdraw.
 
-   ```env
-   STAKE_CONTRACT=0xREPLACE_WITH_40_HEX_CHARACTER_ADDRESS
-   CHAIN_ID=84532
-   RPC_URL=https://sepolia.base.org
-   PORT=3000
-   ```
-5. Restart `npm start` and open `http://localhost:3000`. With a wallet containing test ETH, go through **Connect → Generate → Download encrypted backup → Register → Lock coins**.
+Recovery choices:
 
-You should see a MetaMask transaction confirmation, a BaseScan transaction link, a verified local position, and your nickname/locked value on the board. If a transaction or RPC check fails, the application reports an error rather than claiming the funds were locked.
+- Use the standalone static **`recover.html`** page bundled with this repository. It's on the GitHub Pages site at `recover.html`, but the same files can be hosted on any HTTPS domain or `http://localhost`.
+- Build and self-host the entire static app: `npm run build:pages`; serve `dist/` with any static HTTP server (for example `python3 -m http.server 4173 --directory dist`), then visit `http://localhost:4173`. These commands require Node.js 22+ and Python only if you choose that example server. No database/backend/API tokens are needed.
+- Interact directly with a block explorer's **Write Contract** interface if its contract source has been verified, or with wallet transaction tooling. Call `requestExit(asset)`, wait until the configured conditions pass, and then `withdraw(asset)` using the **depositing wallet**. For native ETH, `asset` is `0x0000000000000000000000000000000000000000`; for ERC-20, use the token contract address.
 
-**Important:** 60 seconds is a lower bound, not an exact withdrawal time. Withdrawal requires both the minimum hold since the last deposit and the delay since requesting exit. A request for exit makes the stake inactive immediately after confirmation. A further deposit resets the minimum holding period for the full position.
-
-## Identity and recovery
-
-The default credential is a separate **Ed25519 public/private keypair** generated with WebCrypto, not your MetaMask seed phrase. MetaMask signs transactions to the staking contract; the independent Ed25519 private key signs public registration challenges and can later sign data for other applications.
-
-- **Generate locally:** You receive a public key and a password-encrypted backup JSON (`stake4karma-key-….json`). Passwords are not sent to the backend. The backup is encrypted with PBKDF2-SHA256 (250,000 iterations) and AES-256-GCM; protect both the JSON and its password. After refreshing the tab, import the backup to recover the identity.
-- **Import your own credential:** You can import a previously exported encrypted Stake4Karma key file, or a plaintext JSON of shape `{"format":"stake4karma-ed25519-v1", "publicKey":"0x...", "privateKeyPkcs8":"0x..."}` containing a *matching Ed25519 pair*. Plaintext private-key files are a significant risk; only use them for throwaway testing. The app cryptographically verifies imported keypair ownership before accepting it.
-- **PGP/OpenPGP:** Not yet supported. A PGP key cannot simply be pasted as an Ed25519 key; secure support requires PGP signature verification and an interoperable fingerprint-to-`bytes32` binding convention. This can be added as a separate credential adapter in a later version.
-
-**Do not lose the identity backup.** The current contract binds one credential to a wallet forever. You can still withdraw with your wallet after satisfying the lock periods even if the identity is lost, but you cannot use a new credential to build a score with that wallet. Test first using a disposable wallet and testnet funds.
+**The contract is independent of any website, but it is not independent of the blockchain.** A functioning Base Sepolia chain, access to a node/RPC, and wallet keys are still required. These guarantees also rely on the unaudited contract being correct. This demo does not guarantee recovery after chain failure, lost wallet keys, malicious/incorrect contract addresses, or contract bugs.
 
 ## Architecture
 
 ```text
-                           Base Sepolia (public chain)
-  Browser wallet ── depositNative(bytes32 publicKey) ──► Stake4Karma.sol
-       │                                          │
-       │                 positionOf(wallet, ETH)  │
-       │                                          ▼
-  Browser UI ───── register signed identity ──► Node server ─► read-only RPC
-       │                                          │
-       │                                      JSON file
-       └─────────── view current leaderboard ◄───┘
+ Any HTTPS / localhost static site (including GitHub Pages)
+  ├─ WebCrypto Ed25519 key (generated and used locally)
+  ├─ Connect EIP-1193 wallet, request wallet-approved transactions
+  │    ├─ register(publicKey, nickname)           [transaction + gas]
+  │    ├─ depositNative(publicKey)                [transaction + gas]
+  │    ├─ requestExit(asset)                     [transaction + gas]
+  │    └─ withdraw(asset)                        [transaction + gas]
+  └─ Base Sepolia read-only RPC / wallet RPC
+       ├─ participantCount() + entryAt(index)    [gasless board reads]
+       └─ positionOf(wallet, asset)              [single-call portable proof]
+                           │
+             Non-upgradeable, adminless escrow contract
+               - wallet-linked Ed25519 credential public key
+               - wallet-linked display name (v0.3 on-chain directory)
+               - locked balances, hold timer, requested exits
+               - no custodian or central storage service
 ```
 
-- `contracts/Stake4Karma.sol` — ownerless escrow, per-wallet permanently bound identity, active/inactive position, time-locked withdraw; also implements standard ERC-20 deposits, though the **demo UI currently only displays native ETH**.
-- `src/stake.js` — reusable ESM WebCrypto identity/signature SDK, read-only `eth_call` verifier, ERC-20/native-wallet transaction helpers. No third-party dependencies.
-- `public/index.html`, `public/styles.css`, `public/app.js` — static browser UI, no framework.
-- `server.js` — static host, challenges, registration and leaderboard endpoints. Only public data is stored. The blockchain RPC URL is **chosen by the server operator**, not by users.
-- `data/registrations.json` — created locally; `.gitignore` excludes it so people cannot accidentally commit user data. Back up the file if you want to preserve nicknames.
+The **global leaderboard** is based on the contract's *public enumerable directory*. This is straightforward and serverless for a test group, but its on-chain indexing increases deposit/registration gas and is not optimized for millions of accounts. The demo only considers **native test ETH positions** and loads at most the first 500 registrations; it explicitly labels partial results. For production use, an untrusted event indexer plus on-chain re-verification or an off-chain portable signed directory would be more scalable.
 
-### API
+The ERC-20 `depositToken`, `requestExit(asset)` and `withdraw(asset)` contract methods are present; the registration/leaderboard UI is ETH-only. **Do not treat ETH and stablecoins as equivalent dollar scores** without a well-specified token valuation policy. Fee-on-transfer/rebasing ERC-20 tokens are not supported.
 
-- `GET /api/config` — chain and contract configuration.
-- `POST /api/challenge` — issue a one-time credential challenge for wallet + Ed25519 public key.
-- `POST /api/register` — verify a signed challenge, register/update a nickname. This does **not** claim wallet ownership or stake; on-chain matching is checked separately.
-- `GET /api/leaderboard` — verified native-ETH positions ordered by raw amount; refreshed at most every 15 seconds.
+## The SDK and credential keys
 
-Registration signatures are **not wallet ownership proofs**. Before a deposit, anyone may claim an arbitrary wallet address as a *provisional* entry, but cannot cause a positive public score without both the private Ed25519 key *and* a matching wallet-approved on-chain lock. Future versions can optionally include wallet challenge signing to reduce misleading provisional registrations.
+The reusable ESM module `src/stake.js` contains:
 
-## Hosting for multiple people
+- WebCrypto Ed25519 key generation, import/export, and domain-separated application content signatures.
+- Cryptographically checked, nonce-scoped authentication proofs backed by the current `positionOf` state (exactly **one** read-only contract call, after signature and chain checks). Consumer apps must consume nonces atomically to reject replays.
+- Browser wallet transaction builders for native and standard ERC-20 assets, exit, withdrawal and registration. No private wallet key is ever exported.
+- `httpRpcProvider()`, `readParticipantCount()` and `readEntry()` for the test leaderboard.
 
-GitHub Pages alone is a static host; it **cannot write your users' registrations into a GitHub repository securely**. Do not put a GitHub personal-access token in a browser app. For a real shared high-score board, run this Node server on a publicly reachable machine with HTTPS and a persistent disk volume:
+The *separate* Ed25519 private key is backed up in an AES-256-GCM-encrypted JSON file, with a password-derived key (PBKDF2-SHA256, 250,000 iterations). Never publish it. **PGP/OpenPGP importing is not yet implemented.** The contract currently binds one Ed25519 key to a wallet permanently; if lost, the wallet can still withdraw but cannot produce signatures for that bound identity. Use a disposable test wallet.
+
+## Development commands
 
 ```bash
-# For deployment behind your own HTTPS reverse proxy:
-HOST=0.0.0.0 PORT=3000 npm start
+npm test                           # 11 tests; no npm dependencies
+npm run build:pages                # create dist/ standalone site
+python3 -m http.server 4173 --directory dist
+# open http://localhost:4173
 ```
 
-This prototype binds to `127.0.0.1` by default and provides *minimal* IP rate-limiting only. For a public deployment, add an HTTPS proxy, durable DB, backups, abuse prevention, monitored RPC, web-app security testing, and appropriate observability. The in-memory challenges and JSON store are single-process only.
+The old **v0.2 Node demo** is still available via `cp .env.example .env && npm start` (`http://localhost:3000`). It uses a local JSON registration database and is retained as a legacy experiment. **It is NOT the serverless GitHub Pages app**; use the `site/` source and `dist/` artifact instead. No Node process is needed on a machine merely visiting the hosted website.
 
-## Important limitations
+GitHub Actions: `.github/workflows/ci.yml` tests the SDK and compiles Solidity, and `.github/workflows/pages.yml` builds and deploys the static website. GitHub Pages must be enabled using GitHub's **Settings → Pages → GitHub Actions** control.
 
-1. **No mainnet deposits.** This contract has *not been compiled/deployment-tested or audited* in this environment. Solidity compilation and a real contract call via MetaMask must be independently tested after deployment. JavaScript tests mock blockchain calls.
-2. **Escrow holds assets.** The contract, not the wallet's available balance, owns the ETH while it is locked. The depositor's wallet retains the only normal withdrawal right under code, but bugs could result in permanent loss. There is no admin, slashing, fee collector, or upgrade path.
-3. **Verification is gasless, not network-free.** The leaderboard does read-only RPC calls, and node providers can rate-limit/charge. Cached views can be briefly stale; finality and reorganization handling are minimal.
-4. **A larger stake earns a bigger score, not a guarantee of good behavior.** A person can still spam from one funded account; each application needs its own rate limits, anti-abuse policy, and definition of reputation. Cryptocurrency lock amounts should not be treated as identity verification or as equivalent to USD without price data.
-5. **Multiple coins:** The contract and SDK support standard ERC-20 assets, but scores across different coins require per-asset allowlists and a price conversion policy. The demonstration board deliberately ranks only testnet ETH. Solana needs a different program and adapter.
-6. **Server-side key data:** Only public keys, addresses, nicknames, and timestamps are persisted. Identity secret keys must stay on the client. Encrypted backup protects files at rest against casual disclosure but a malicious website or compromised browser can still steal keys at use time.
+## Security and limitations
+
+- **Only testnet assets.** No audit, live-wallet end-to-end test or formal verification. Mistakes in contracts can trap funds. Do not use real value yet.
+- **No backdoor.** The source has no protocol administrator, upgrade or slashing path; the wallet authorizes its own withdrawals subject to immutable exit rules.
+- **No instant global observation.** Nodes observe chain state with varying latency; contract exit deactivates scoring after confirmation, but browsers refreshing at different times may display stale data.
+- **Rate-limited RPC.** Base's free public HTTP RPC is not guaranteed to serve unlimited anonymous viewers and can fail due to CORS, rate limits or outages; the static demo lets users choose another compatible RPC. No API server is required, but some node access is.
+- **Economic stake is not behavior reputation.** Locking funds increases the cost of operating many identities but doesn't make an account honest or stop all spam. Projects may combine stake with posting limits and moderation.
+- **Wallet and key security.** Never share the wallet seed phrase, credential backup password, or Ed25519 private key. A malicious hosted copy of a dapp could trick users into approving harmful transactions or steal credential keys; prefer verified source and domain.
 
 **License:** MIT.

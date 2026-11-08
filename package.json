@@ -1,11 +1,19 @@
 {
   "name": "stake4karma",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
-  "description": "Testnet browser wallet stake-backed leaderboard and portable credential SDK",
-  "exports": { ".": "./src/stake.js" },
-  "scripts": { "start": "node server.js", "test": "node --test" },
-  "engines": { "node": ">=22" },
+  "description": "Portable stake identity with hosted serverless testnet leaderboard, wallet withdrawal and on-chain registry",
+  "exports": {
+    ".": "./src/stake.js"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test",
+    "build:pages": "node scripts/build-pages.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
   "license": "MIT"
 }

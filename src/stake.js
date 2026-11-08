@@ -12,6 +12,10 @@ export const SELECTORS = Object.freeze({
   withdraw: '0x51cff8d9',
   positionOf: '0x892f928e',
   approve: '0x095ea7b3',
+  register: '0x2f926732',
+  setHandle: '0xfd8ff3a3',
+  participantCount: '0x362f04c0',
+  entryAt: '0x9c67a385',
 });
 const textEncoder = new TextEncoder();
 const ZERO_KEY = '0x' + '00'.repeat(32);
@@ -274,4 +278,48 @@ export async function waitForReceipt(provider, hash, {attempts = 80, pollMs = 20
     await new Promise(resolve => setTimeout(resolve, pollMs));
   }
   throw new Error('Receipt not found within polling limit: ' + hash);
+}
+
+
+/** On-chain nicknames are deliberately restricted to simple ASCII. */
+export function encodeHandle(handle) {
+  if (typeof handle !== 'string' || !/^[a-zA-Z0-9_. -]{2,24}$/.test(handle.trim())) {
+    throw new Error('Handle must be 2–24 ASCII letters, digits, spaces, dots, hyphens or underscores');
+  }
+  const raw = new TextEncoder().encode(handle.trim());
+  return '0x' + Array.from(raw, b => b.toString(16).padStart(2, '0')).join('').padEnd(64,'0');
+}
+export function decodeHandle(hex) {
+  const raw = hexBytes(assertPublicKey(hex));
+  return new TextDecoder('utf-8', {fatal: true}).decode(raw.slice(0, raw.indexOf(0) < 0 ? raw.length : raw.indexOf(0)));
+}
+export async function registerOnChain({provider, chainId, contract, from, publicKey, handle}) {
+  await assertChain(provider, chainId);
+  return send({provider,from,to:contract,data:calldata(SELECTORS.register,
+    [publicKey, encodeHandle(handle)], ['key','key'])});
+}
+export async function changeHandle({provider, chainId, contract, from, handle}) {
+  await assertChain(provider, chainId);
+  return send({provider,from,to:contract,data:calldata(SELECTORS.setHandle,
+    [encodeHandle(handle)], ['key'])});
+}
+export async function readParticipantCount({provider, contract}) {
+  const data = await rpc(provider, 'eth_call', [{to:assertAddress(contract),data:SELECTORS.participantCount},'latest']);
+  if (typeof data !== 'string' || !/^0x[0-9a-fA-F]{64}$/.test(data))
+    throw new Error('Contract does not expose the v0.3 participant directory');
+  return BigInt(data);
+}
+export async function readEntry({provider, contract, index}) {
+  if (BigInt(index) < 0n) throw new Error('Negative index');
+  const data = await rpc(provider, 'eth_call', [{to:assertAddress(contract),
+    data:calldata(SELECTORS.entryAt,[index],['uint'])},'latest']);
+  if (typeof data !== 'string' || !/^0x[0-9a-fA-F]{320}$/.test(data))
+    throw new Error('Bad entryAt response');
+  const words = Array.from({length:5},(_,i)=> data.slice(2+64*i,2+64*(i+1)));
+  const active = BigInt('0x'+words[4]);
+  if (active > 1n) throw new Error('Bad active flag');
+  return {wallet:assertAddress('0x'+words[0].slice(24)),
+    publicKey:assertPublicKey('0x'+words[1]),
+    handle:decodeHandle('0x'+words[2]),
+    amount:BigInt('0x'+words[3]),active:active===1n};
 }

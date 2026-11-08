@@ -29,10 +29,17 @@ contract Stake4Karma {
 
     // A wallet can bind exactly one Ed25519 public key, forever (v1 policy).
     mapping(address => bytes32) public keyOf;
+    // Demo-only on-chain directory. An application needs no centralized indexer
+    // to find wallets, credentials or nicknames. The array grows monotonically.
+    mapping(address => bytes32) public displayNameOf;
+    mapping(address => bool) private enrolled;
+    address[] private participants;
     mapping(address => mapping(address => Position)) private positions;
     uint256 private entered = 1;
 
     event KeyBound(address indexed wallet, bytes32 indexed publicKey);
+    event Registered(address indexed wallet, bytes32 indexed publicKey, bytes32 displayName);
+    event DisplayNameChanged(address indexed wallet, bytes32 displayName);
     event Deposited(address indexed wallet, address indexed asset, uint256 amount);
     event ExitRequested(address indexed wallet, address indexed asset, uint256 withdrawalAvailableAt);
     event Withdrawn(address indexed wallet, address indexed asset, uint256 amount);
@@ -44,9 +51,43 @@ contract Stake4Karma {
         entered = 1;
     }
 
+    /**
+     * Permissionless on-chain registration. Only the wallet can register itself.
+     * The display name is a nonunique, optional cosmetic label (1..24 ASCII chars).
+     * A registration transaction costs gas but never grants the site custody.
+     */
+    function register(bytes32 publicKey, bytes32 displayName) external {
+        _bind(publicKey);
+        _join(msg.sender);
+        _setDisplayName(msg.sender, displayName);
+        emit Registered(msg.sender, publicKey, displayName);
+    }
+
+    function setHandle(bytes32 displayName) external {
+        require(keyOf[msg.sender] != bytes32(0), "NOT_REGISTERED");
+        _setDisplayName(msg.sender, displayName);
+    }
+
+    function participantCount() external view returns (uint256) {
+        return participants.length;
+    }
+
+    /** One eth_call per participant; no logs, storage service or indexer needed. */
+    function entryAt(uint256 i) external view returns (
+        address wallet, bytes32 publicKey, bytes32 displayName, uint256 amount, bool active
+    ) {
+        wallet = participants[i];
+        publicKey = keyOf[wallet];
+        displayName = displayNameOf[wallet];
+        Position storage p = positions[wallet][NATIVE_ASSET];
+        amount = p.amount;
+        active = amount != 0 && p.exitRequested == 0;
+    }
+
     function depositNative(bytes32 publicKey) external payable nonReentrant {
         require(msg.value != 0, "ZERO_AMOUNT");
         _bind(publicKey);
+        _join(msg.sender);
         _credit(NATIVE_ASSET, msg.value);
     }
 
@@ -56,6 +97,7 @@ contract Stake4Karma {
         require(asset != NATIVE_ASSET && asset.code.length != 0, "INVALID_TOKEN");
         require(amount != 0, "ZERO_AMOUNT");
         _bind(publicKey);
+        _join(msg.sender);
         require(positions[msg.sender][asset].exitRequested == 0, "EXIT_PENDING");
 
         uint256 beforeBalance = _balanceOf(asset, address(this));
@@ -118,6 +160,33 @@ contract Stake4Karma {
         } else {
             require(current == publicKey, "KEY_ALREADY_BOUND");
         }
+    }
+
+    function _join(address wallet) private {
+        if (!enrolled[wallet]) {
+            enrolled[wallet] = true;
+            participants.push(wallet);
+        }
+    }
+
+    function _setDisplayName(address wallet, bytes32 name) private {
+        bool ended;
+        uint256 length;
+        for (uint256 i = 0; i < 32; ++i) {
+            uint8 c = uint8(name[i]);
+            if (c == 0) {
+                ended = true;
+            } else {
+                require(!ended && length < 24, "INVALID_NAME_LENGTH");
+                require((c >= 65 && c <= 90) || (c >= 97 && c <= 122) ||
+                        (c >= 48 && c <= 57) || c == 32 || c == 95 ||
+                        c == 46 || c == 45, "INVALID_NAME_CHAR");
+                ++length;
+            }
+        }
+        require(length >= 2, "NAME_TOO_SHORT");
+        displayNameOf[wallet] = name;
+        emit DisplayNameChanged(wallet, name);
     }
 
     function _credit(address asset, uint256 amount) private {

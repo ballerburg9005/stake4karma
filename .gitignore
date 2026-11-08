@@ -3,3 +3,6 @@ data/*.json
 node_modules/
 .DS_Store
 *.log
+
+# Generated static site, deployed from GitHub Actions
+dist/
