@@ -1,7 +1,7 @@
 import {
   createIdentity, exportPrivateKey, importPrivateKey, registerOnChain,
   depositNative, requestExit, withdraw, readPosition, readParticipantCount, readEntry,
-  waitForReceipt, httpRpcProvider, assertChain, NATIVE_ASSET, assertAddress
+  waitForReceipt, httpRpcProvider, assertChain, readLockRules, assertCompatibleWalletKey, NATIVE_ASSET, assertAddress
 } from './stake.js';
 
 const $ = id => document.getElementById(id);
@@ -27,6 +27,13 @@ function formatEth(raw, places = 6) {
   const whole = n / (10n ** 18n);
   const fraction = (n % (10n ** 18n)).toString().padStart(18, '0').slice(0, places).replace(/0+$/, '');
   return whole.toString() + (fraction ? '.' + fraction : '');
+}
+function prettyDuration(seconds) {
+  const s=BigInt(seconds);
+  if(s%86400n===0n)return `${s/86400n} day(s)`;
+  if(s%3600n===0n)return `${s/3600n} hour(s)`;
+  if(s%60n===0n)return `${s/60n} minute(s)`;
+  return `${s} second(s)`;
 }
 function parseEth(value) {
   if (!/^\d+(\.\d{1,18})?$/.test(value)) throw new Error('Use a positive decimal amount with up to 18 places.');
@@ -211,8 +218,13 @@ async function performTransaction(sendFn, success) {
   await Promise.all([checkPosition(),readWalletBalance(),refreshLeaderboard()]);
   notice(success,'success');
 }
+async function requireCompatibleKey() {
+  const p=await readPosition({provider:await reader(),contract:state.config.contract,wallet:state.wallet});
+  assertCompatibleWalletKey(p, state.publicKey);
+}
 async function register() {
   if(!state.wallet||!state.privateKey||!state.backedUp)throw new Error('Connect wallet and back up an identity before registering.');
+  await requireCompatibleKey();
   await performTransaction(()=>registerOnChain({provider:provider(),chainId:84532,contract:state.config.contract,
     from:state.wallet,publicKey:state.publicKey,handle:$('handle').value}),
     'Public name and credential key registered on-chain.');
@@ -222,6 +234,7 @@ async function register() {
 async function stake() {
   if(!state.backedUp||!state.privateKey)throw new Error('Create or import an identity and save its encrypted backup first.');
   const amount=parseEth($('stakeAmount').value.trim());
+  await requireCompatibleKey();
   await performTransaction(()=>depositNative({provider:provider(),chainId:84532,contract:state.config.contract,
     from:state.wallet,publicKey:state.publicKey,amount}),
     'Coins locked. Your wallet alone retains the right to request exit and withdraw.');
@@ -281,6 +294,8 @@ async function setContract() {
   const code=await rpc.request({method:'eth_getCode',params:[addr,'latest']});
   if(!code||code==='0x')throw new Error('No contract code at this Base Sepolia address.');
   await readParticipantCount({provider:rpc,contract:addr});
+  const rules=await readLockRules({provider:rpc,contract:addr});
+  $('lockRules').textContent=`Minimum hold: ${prettyDuration(rules.minHoldSeconds)} · Exit delay: ${prettyDuration(rules.exitDelaySeconds)}. Withdrawal is possible only after BOTH rules are satisfied.`;
   state.config.contract=addr;
   localStorage.setItem('stake4karma-contract-84532',addr);
   const url=new URL(location.href);url.searchParams.set('contract',addr);

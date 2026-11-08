@@ -27,6 +27,7 @@
       <label class="field-label" for="rpcInput">Read-only RPC URL (optional; change provider if unavailable)</label>
       <div class="row-buttons"><input id="rpcInput" type="url" placeholder="https://sepolia.base.org" spellcheck="false" autocomplete="off"><button id="saveRpcBtn" class="button ghost">Set RPC</button></div>
       <div id="contractStatus" class="tiny muted">No contract selected</div>
+      <p id="lockRules" class="tiny muted" aria-live="polite">Lock periods will be shown after you select a contract.</p>
       <a id="shareLink" class="explorer" href="#" hidden>Share this board with the same contract ↗</a>
       <p class="muted tiny">Only enter a contract you trust after verifying its source code. A malicious contract may steal deposits. This demonstration never requests a seed phrase or wallet private key.</p>
     </section>

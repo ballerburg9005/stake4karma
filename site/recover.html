@@ -18,6 +18,7 @@
  <label class="field-label" for="asset">Asset: zero address for native ETH, or ERC-20 token contract</label>
  <input id="asset" spellcheck="false" style="width:100%" value="0x0000000000000000000000000000000000000000">
  <div class="row-buttons" style="margin-top:18px"><button class="button secondary" id="connect">Connect original wallet</button><button class="button secondary" id="check">Check on-chain position</button></div>
+ <p id="lockRules" class="tiny muted" aria-live="polite">Contract locking rules will appear after checking your position.</p>
  <div class="position"><span class="tiny muted">Verified position</span><strong id="amount">Not checked</strong><small id="status"></small></div>
  <div class="row-buttons"><button id="exit" class="button ghost">Request exit</button><button id="withdraw" class="button primary">Withdraw when eligible</button></div>
  <div class="tiny muted" style="margin-top:15px">The contract enforces its hold and exit delays. No website can override them. Transactions cost network gas. This tool does not ask for a seed phrase.</div>

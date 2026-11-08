@@ -1,5 +1,5 @@
 /**
- * PortableStake v0.1 - zero-runtime-dependency ES module.
+ * Stake4Karma - zero-runtime-dependency ES module.
  * Uses WebCrypto Ed25519 and an EIP-1193 JSON-RPC provider.
  * Every user action is wallet-approved; no private wallet keys enter this SDK.
  */
@@ -16,6 +16,8 @@ export const SELECTORS = Object.freeze({
   setHandle: '0xfd8ff3a3',
   participantCount: '0x362f04c0',
   entryAt: '0x9c67a385',
+  minHold: '0x126457e1',
+  exitDelay: '0x9d82ba25',
 });
 const textEncoder = new TextEncoder();
 const ZERO_KEY = '0x' + '00'.repeat(32);
@@ -199,15 +201,52 @@ export async function readPosition({provider, contract, wallet, asset = NATIVE_A
   return decodePosition(raw);
 }
 
+/** Prevent sending a wallet transaction with an identity that cannot be bound to it. */
+export function assertCompatibleWalletKey(position, proposedKey) {
+  const key = assertPublicKey(proposedKey);
+  if (!position || typeof position !== 'object') throw new Error('Missing on-chain position');
+  const existing = assertPublicKey(position.publicKey);
+  if (existing !== ZERO_KEY && existing !== key) {
+    throw new Error('Wallet is permanently bound to a different public key; import its backup or use a different wallet');
+  }
+  if (position.exitRequestedAt) {
+    throw new Error('Wallet has a pending exit; complete withdrawal before depositing again');
+  }
+  return position;
+}
+
+/** Read the immutable, deployment-specific locking periods (two gas-free eth_call lookups). */
+export async function readLockRules({provider, contract, blockTag = 'latest'}) {
+  const address = assertAddress(contract);
+  const decode = (data, field) => {
+    if (typeof data !== 'string' || !/^0x[0-9a-fA-F]{64}$/.test(data)) {
+      throw new Error(`Invalid ${field} response (wrong contract or untrusted RPC)`);
+    }
+    const n = BigInt(data);
+    if (n === 0n || n > (1n << 64n) - 1n) throw new Error(`Invalid ${field} duration`);
+    return n;
+  };
+  const [hold, exit] = await Promise.all([
+    rpc(provider, 'eth_call', [{to: address, data: SELECTORS.minHold}, blockTag]),
+    rpc(provider, 'eth_call', [{to: address, data: SELECTORS.exitDelay}, blockTag]),
+  ]);
+  return {minHoldSeconds: decode(hold, 'MIN_HOLD'), exitDelaySeconds: decode(exit, 'EXIT_DELAY')};
+}
+
 /**
  * Verify a trusted, verifier-issued challenge against an active on-chain position.
  * IMPORTANT: use an independently operated node/RPC, not the claimant's RPC.
- * IMPORTANT: applications must implement consumeNonce to prevent replay.
+ * IMPORTANT: pass expectedAudience from the verifier configuration (never the claimant).
+ * IMPORTANT: applications must issue/track challenges and atomically consume nonces.
  */
 export async function verifyCredential({provider, chainId, contract, asset = NATIVE_ASSET,
-  minimumAmount = 1n, challenge, proof, consumeNonce, now = Math.floor(Date.now() / 1000),
+  expectedAudience, minimumAmount = 1n, challenge, proof, consumeNonce, now = Math.floor(Date.now() / 1000),
   checkChain = true, blockTag = 'latest'} = {}) {
+  validAudience(expectedAudience);
   validateChallenge(challenge, now);
+  if (challenge.audience !== expectedAudience) {
+    return {ok: false, reason: 'AUDIENCE_MISMATCH'};
+  }
   if (!proof || typeof proof !== 'object') throw new Error('Missing proof');
   const wallet = assertAddress(proof.wallet);
   const publicKey = assertPublicKey(proof.publicKey);

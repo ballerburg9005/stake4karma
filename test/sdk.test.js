@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   createIdentity, createChallenge, signCredential, verifyCredential, signContent, verifyContentSignature,
-  exportPrivateKey, importPrivateKey, readPosition, depositNative,
+  exportPrivateKey, importPrivateKey, readPosition, readLockRules, assertCompatibleWalletKey, depositNative,
   depositToken, approveToken, requestExit, withdraw, NATIVE_ASSET,
   SELECTORS
 } from '../src/stake.js';
@@ -48,13 +48,13 @@ test('Ed25519 credential verifies with exactly one read-only eth_call', async ()
   const {provider, calls} = providerFor(posResult(identity.publicKey));
   const consumeNonce = consumedOnce();
   const verified = await verifyCredential({provider, chainId, contract, asset: token,
-    minimumAmount: amount, challenge, proof, consumeNonce});
+    minimumAmount: amount, expectedAudience: challenge.audience, challenge, proof, consumeNonce});
   assert.equal(verified.ok, true);
   assert.equal(verified.amount, amount);
   assert.deepEqual(calls.map(x => x.method), ['eth_chainId', 'eth_call']);
   assert.equal(calls[1].params[0].data.slice(0, 10), SELECTORS.positionOf);
   const replay = await verifyCredential({provider, chainId, contract, asset: token,
-    minimumAmount: amount, challenge, proof, consumeNonce});
+    minimumAmount: amount, expectedAudience: challenge.audience, challenge, proof, consumeNonce});
   assert.deepEqual({ok: replay.ok, reason: replay.reason}, {ok: false, reason: 'NONCE_ALREADY_USED'});
 });
 
@@ -70,7 +70,7 @@ test('does not accept a mismatching public key, exited stake, or inadequate amou
   ]) {
     const {provider} = providerFor(positionResponse);
     const result = await verifyCredential({provider, chainId, contract, asset: token,
-      minimumAmount: amount, challenge, proof, consumeNonce: consumedOnce()});
+      minimumAmount: amount, expectedAudience: challenge.audience, challenge, proof, consumeNonce: consumedOnce()});
     assert.equal(result.reason, expected);
   }
 });
@@ -81,17 +81,21 @@ test('rejects tampered context, wrong chain, future/expired challenge', async ()
   const proof = await signCredential({chainId, contract, wallet, ...identity, challenge});
   const {provider} = providerFor(posResult(identity.publicKey));
   const tampered = {...proof, wallet: '0x' + 'ff'.repeat(20)};
-  assert.equal((await verifyCredential({provider, chainId, contract, challenge,
+  assert.equal((await verifyCredential({provider, chainId, contract, expectedAudience: challenge.audience, challenge,
     proof: tampered, consumeNonce: consumedOnce()})).reason, 'INVALID_SIGNATURE');
-  assert.equal((await verifyCredential({provider, chainId: 1, contract, challenge,
+  assert.equal((await verifyCredential({provider, chainId: 1, contract, expectedAudience: challenge.audience, challenge,
     proof, consumeNonce: consumedOnce()})).reason, 'INVALID_SIGNATURE');
+  assert.equal((await verifyCredential({provider, chainId, contract, expectedAudience: 'a.different.app',
+    challenge, proof, consumeNonce: consumedOnce()})).reason, 'AUDIENCE_MISMATCH');
+  await assert.rejects(() => verifyCredential({provider, chainId, contract, challenge,
+    proof, consumeNonce: consumedOnce()}), /Invalid audience/);
   const {provider: wrongChain} = providerFor(posResult(identity.publicKey), {chain: '0x1'});
-  await assert.rejects(() => verifyCredential({provider: wrongChain, chainId, contract,
+  await assert.rejects(() => verifyCredential({provider: wrongChain, chainId, contract, expectedAudience: challenge.audience,
     challenge, proof, consumeNonce: consumedOnce()}), /Wrong chain/);
-  await assert.rejects(() => verifyCredential({provider, chainId, contract,
+  await assert.rejects(() => verifyCredential({provider, chainId, contract, expectedAudience: challenge.audience,
     challenge: {...challenge, expiresAt: challenge.issuedAt - 1}, proof, consumeNonce: consumedOnce()}),
     /Invalid challenge lifetime/);
-  await assert.rejects(() => verifyCredential({provider, chainId, contract,
+  await assert.rejects(() => verifyCredential({provider, chainId, contract, expectedAudience: challenge.audience,
     challenge, proof}), /consumeNonce callback required/);
 });
 
@@ -103,7 +107,7 @@ test('private-key optional encrypted-backup workflow', async () => {
   const proof = await signCredential({chainId, contract, wallet, publicKey: identity.publicKey,
     privateKey: restored, challenge});
   assert.equal((await verifyCredential({provider: providerFor(posResult(identity.publicKey)).provider,
-    chainId, contract, challenge, proof, consumeNonce: consumedOnce()})).ok, true);
+    chainId, contract, expectedAudience: challenge.audience, challenge, proof, consumeNonce: consumedOnce()})).ok, true);
 });
 
 test('ABI encoding sends expected selectors and wallet-approved transactions', async () => {
@@ -141,4 +145,34 @@ test('portable content signatures bind exact bytes and application audience', as
   assert.equal(await verifyContentSignature({publicKey, audience: 'other.example', content, signature}), false);
   assert.equal(await verifyContentSignature({publicKey, audience: 'imageboard.example',
     content: 'my post bytes!', signature}), false);
+});
+
+
+test('reads immutable contract lock delays and rejects invalid responses', async () => {
+  const calls=[];
+  const provider={async request({method,params}) {
+    assert.equal(method, 'eth_call');
+    calls.push(params[0].data);
+    if(params[0].data === SELECTORS.minHold) return '0x' + byteWord(86400n);
+    if(params[0].data === SELECTORS.exitDelay) return '0x' + byteWord(604800n);
+    throw new Error('Unexpected selector');
+  }};
+  assert.deepEqual(await readLockRules({provider, contract}),
+    {minHoldSeconds:86400n, exitDelaySeconds:604800n});
+  assert.deepEqual(calls,[SELECTORS.minHold, SELECTORS.exitDelay]);
+  await assert.rejects(() => readLockRules({provider:{request:async()=> '0x'},contract}),
+    /Invalid MIN_HOLD response/);
+  await assert.rejects(() => readLockRules({provider:{request:async()=> '0x'+byteWord(0)},contract}),
+    /Invalid MIN_HOLD duration/);
+});
+
+
+test('identity preflight prevents mismatched keys and deposits during pending exit', () => {
+  const own='0x'+'c3'.repeat(32), different='0x'+'d4'.repeat(32);
+  const empty={publicKey:'0x'+'00'.repeat(32),exitRequestedAt:0};
+  const matching={publicKey:own,exitRequestedAt:0};
+  assert.equal(assertCompatibleWalletKey(empty,own),empty);
+  assert.equal(assertCompatibleWalletKey(matching,own),matching);
+  assert.throws(()=>assertCompatibleWalletKey(matching,different),/different public key/);
+  assert.throws(()=>assertCompatibleWalletKey({...matching,exitRequestedAt:1},own),/pending exit/);
 });

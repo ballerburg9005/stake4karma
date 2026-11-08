@@ -1,4 +1,4 @@
-# Stake4Karma · serverless demo (v0.3)
+# Stake4Karma · serverless demo (v0.4)
 
 **Lock coins, prove your commitment, spend no stake.** This project contains a zero-dependency JavaScript SDK, a non-upgradeable Solidity escrow, and an **entirely static browser demo** that can run on GitHub Pages, any other HTTPS host, or localhost. The demo stores registration, nicknames, wallet associations, and active stakes **in the smart contract**, not in an administrator's database.
 
@@ -21,7 +21,7 @@
 1. Obtain a small amount of **Base Sepolia test ETH** in a disposable browser wallet; configure Base Sepolia with RPC `https://sepolia.base.org`, chain ID **84532**, explorer `https://sepolia.basescan.org`.
 2. Open [Remix Solidity IDE](https://remix.ethereum.org/). Copy **the current `contracts/Stake4Karma.sol`** into a new Solidity file. Compile using **Solidity 0.8.30** (or compatible 0.8.24+).
 3. In **Deploy & Run**, select **Injected Provider – MetaMask**, verify the account is on Base Sepolia, and deploy `Stake4Karma` using constructor values `60, 60` (60-second minimum hold / 60-second exit delay). Never reuse the short demonstration delays to claim strong spam resistance.
-4. Confirm the deployment transaction in MetaMask. Copy the **new contract address** from Remix or BaseScan. Paste it into the Pages app's contract field. The app checks that the chain is Base Sepolia, there is code at that address, and it responds to the v0.3 directory interface. This does **not** prove that arbitrary bytecode is safe: inspect and verify the source before staking.
+4. Confirm the deployment transaction in MetaMask. Copy the **new contract address** from Remix or BaseScan. Paste it into the Pages app's contract field. The app checks that the chain is Base Sepolia, that code exists, that the directory works, and reads the immutable minimum-hold and exit-delay durations. **A contract can fake these responses; this is not a security audit or a bytecode authenticity check.** This does **not** prove that arbitrary bytecode is safe: inspect and verify the source before staking.
 5. Share the URL containing `?contract=0x…` with other testers. They can register and stake from their own wallets without hosting an app server.
 
 There is no shared deployed contract address in this repository at the time of writing. A *v0.2* deployment does **not** support the new `entryAt` and `participantCount` functions needed for serverless rankings. Deploy the current v0.3 source.
@@ -68,9 +68,12 @@ The ERC-20 `depositToken`, `requestExit(asset)` and `withdraw(asset)` contract m
 The reusable ESM module `src/stake.js` contains:
 
 - WebCrypto Ed25519 key generation, import/export, and domain-separated application content signatures.
-- Cryptographically checked, nonce-scoped authentication proofs backed by the current `positionOf` state (exactly **one** read-only contract call, after signature and chain checks). Consumer apps must consume nonces atomically to reject replays.
+- Cryptographically checked, nonce-scoped authentication proofs that **require an independently configured `expectedAudience`** and are backed by the current `positionOf` state (exactly **one** read-only contract call, after signature and chain checks). Consumer apps must consume nonces atomically to reject replays.
 - Browser wallet transaction builders for native and standard ERC-20 assets, exit, withdrawal and registration. No private wallet key is ever exported.
-- `httpRpcProvider()`, `readParticipantCount()` and `readEntry()` for the test leaderboard.
+- `httpRpcProvider()`, `readParticipantCount()` and `readEntry()` for the test leaderboard; `readLockRules()` to display immutable contract timeouts before depositing.
+- Pre-deposit on-chain key comparison in the static UI prevents accidentally registering or depositing with a new key in an already-bound wallet (without wasting a transaction).
+
+**Breaking SDK change in v0.4:** `verifyCredential()` now requires `expectedAudience` set by each verifier (not supplied by the user). This prevents trusting an attacker-supplied challenge audience. The Solidity contract is unchanged from v0.3; existing v0.3 deployments remain compatible.
 
 The *separate* Ed25519 private key is backed up in an AES-256-GCM-encrypted JSON file, with a password-derived key (PBKDF2-SHA256, 250,000 iterations). Never publish it. **PGP/OpenPGP importing is not yet implemented.** The contract currently binds one Ed25519 key to a wallet permanently; if lost, the wallet can still withdraw but cannot produce signatures for that bound identity. Use a disposable test wallet.
 
