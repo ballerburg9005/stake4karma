@@ -1,3 +1,5 @@
+# Author note: I have not checked this yet made with ChatGPT Plus.
+
 # Stake4Karma · serverless demo (v0.5)
 
 **Lock coins, prove your commitment, spend no stake.** This project contains a zero-dependency JavaScript SDK, a non-upgradeable Solidity escrow, and an **entirely static browser demo** that can run on GitHub Pages, any other HTTPS host, or localhost. The demo stores registration, nicknames, wallet associations, and active stakes **in the smart contract**, not in an administrator's database.
