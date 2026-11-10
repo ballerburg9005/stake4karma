@@ -17,5 +17,7 @@ jobs:
           node-version: '22'
       - name: Run SDK and server tests
         run: npm test
+      - name: Check standalone static-site build
+        run: npm run build:pages
       - name: Compile Solidity escrow with solc 0.8.30
         run: npm exec --yes --package=solc@0.8.30 -- solcjs --bin contracts/Stake4Karma.sol

@@ -4,3 +4,5 @@
 #contractInput,#rpcInput {flex:1;min-width:220px;font-family:monospace;font-size:.85rem}
 #shareLink {display:inline-block;margin-top:8px}
 #shareLink[hidden] {display:none}
+
+.board-address:hover,.board-address:focus-visible {color:var(--accent);text-decoration:underline}

@@ -263,7 +263,9 @@ function drawLeaderboard(entries,total,partial) {
     const rank=document.createElement('span');rank.className='rank';rank.textContent='#'+(i+1);
     const owner=document.createElement('div');
     const nickname=document.createElement('div');nickname.className='board-name';nickname.textContent=item.handle||'Unnamed wallet';
-    const address=document.createElement('div');address.className='board-address';address.textContent=short(item.wallet);
+    const address=document.createElement('a');address.className='board-address';
+    address.href=`https://sepolia.basescan.org/address/${item.wallet}`;address.target='_blank';address.rel='noopener noreferrer';
+    address.title=item.wallet;address.textContent=short(item.wallet);
     owner.append(nickname,address);
     const amount=document.createElement('div');amount.className='board-value';amount.textContent=formatEth(item.amount,7);
     const unit=document.createElement('small');unit.textContent='TEST ETH LOCKED';amount.append(unit);

@@ -1,6 +1,4 @@
-# Author note: I have not checked this yet made with ChatGPT Plus.
-
-# Stake4Karma · serverless demo (v0.4)
+# Stake4Karma · serverless demo (v0.5)
 
 **Lock coins, prove your commitment, spend no stake.** This project contains a zero-dependency JavaScript SDK, a non-upgradeable Solidity escrow, and an **entirely static browser demo** that can run on GitHub Pages, any other HTTPS host, or localhost. The demo stores registration, nicknames, wallet associations, and active stakes **in the smart contract**, not in an administrator's database.
 
@@ -8,7 +6,7 @@
 
 ## Quickest way to use the GitHub Pages website
 
-1. In this repository open **Settings → Pages → Build and deployment → Source → GitHub Actions**. This one-time GitHub configuration must be performed by a repository admin. A workflow at `.github/workflows/pages.yml` publishes the static site after pushes to `main`. The repository's public site will typically be `https://ballerburg9005.github.io/stake4karma/` **after** deployment succeeds.
+1. GitHub Pages uses **Deploy from a branch → main → /(root)** in this repository. The root `index.html` sends visitors to the browser app in `site/`; `site/stake.js` bridges to the SDK in `src/`. GitHub publishes changes through its built-in **pages build and deployment** action. The expected site URL is `https://ballerburg9005.github.io/stake4karma/`. For the public recovery page, use `https://ballerburg9005.github.io/stake4karma/recover.html`. This source layout also works on any conventional static host.
 2. Someone (for now, you) must deploy the **new v0.3** contract from `contracts/Stake4Karma.sol` on **Base Sepolia**. See the instructions below. A website cannot deploy it without a wallet-approved transaction.
 3. Open the hosted website, paste the **deployed contract address**, and select **Use contract**. The address is stored only in this browser's local storage. Copy **Share this board** for a URL carrying `?contract=0x…`. Later the maintainer can publish a default verified contract address in the app.
 4. Connect MetaMask (Base Sepolia), generate an Ed25519 credential key or import a Stake4Karma backup, and **download a password-encrypted backup**.
@@ -26,7 +24,7 @@
 4. Confirm the deployment transaction in MetaMask. Copy the **new contract address** from Remix or BaseScan. Paste it into the Pages app's contract field. The app checks that the chain is Base Sepolia, that code exists, that the directory works, and reads the immutable minimum-hold and exit-delay durations. **A contract can fake these responses; this is not a security audit or a bytecode authenticity check.** This does **not** prove that arbitrary bytecode is safe: inspect and verify the source before staking.
 5. Share the URL containing `?contract=0x…` with other testers. They can register and stake from their own wallets without hosting an app server.
 
-There is no shared deployed contract address in this repository at the time of writing. A *v0.2* deployment does **not** support the new `entryAt` and `participantCount` functions needed for serverless rankings. Deploy the current v0.3 source.
+There is no shared deployed contract address in this repository at the time of writing. The web app can load and register identities without a server, but on-chain staking and scores require a wallet-approved contract deployment. A *v0.2* deployment does **not** support the new `entryAt` and `participantCount` functions needed for serverless rankings. Deploy the current v0.3 source.
 
 ## When GitHub, the demo, or a central service goes away
 
@@ -34,7 +32,7 @@ There is no shared deployed contract address in this repository at the time of w
 
 Recovery choices:
 
-- Use the standalone static **`recover.html`** page bundled with this repository. It's on the GitHub Pages site at `recover.html`, but the same files can be hosted on any HTTPS domain or `http://localhost`.
+- Use the standalone static **`recover.html`** page bundled with this repository. It's on the GitHub Pages site at `recover.html` (redirecting to `site/recover.html`), but the same files can be hosted on any HTTPS domain or `http://localhost`.
 - Build and self-host the entire static app: `npm run build:pages`; serve `dist/` with any static HTTP server (for example `python3 -m http.server 4173 --directory dist`), then visit `http://localhost:4173`. These commands require Node.js 22+ and Python only if you choose that example server. No database/backend/API tokens are needed.
 - Interact directly with a block explorer's **Write Contract** interface if its contract source has been verified, or with wallet transaction tooling. Call `requestExit(asset)`, wait until the configured conditions pass, and then `withdraw(asset)` using the **depositing wallet**. For native ETH, `asset` is `0x0000000000000000000000000000000000000000`; for ERC-20, use the token contract address.
 
@@ -75,14 +73,14 @@ The reusable ESM module `src/stake.js` contains:
 - `httpRpcProvider()`, `readParticipantCount()` and `readEntry()` for the test leaderboard; `readLockRules()` to display immutable contract timeouts before depositing.
 - Pre-deposit on-chain key comparison in the static UI prevents accidentally registering or depositing with a new key in an already-bound wallet (without wasting a transaction).
 
-**Breaking SDK change in v0.4:** `verifyCredential()` now requires `expectedAudience` set by each verifier (not supplied by the user). This prevents trusting an attacker-supplied challenge audience. The Solidity contract is unchanged from v0.3; existing v0.3 deployments remain compatible.
+**SDK change introduced in v0.4:** `verifyCredential()` now requires `expectedAudience` set by each verifier (not supplied by the user). This prevents trusting an attacker-supplied challenge audience. The Solidity contract is unchanged from v0.3; existing v0.3 deployments remain compatible.
 
 The *separate* Ed25519 private key is backed up in an AES-256-GCM-encrypted JSON file, with a password-derived key (PBKDF2-SHA256, 250,000 iterations). Never publish it. **PGP/OpenPGP importing is not yet implemented.** The contract currently binds one Ed25519 key to a wallet permanently; if lost, the wallet can still withdraw but cannot produce signatures for that bound identity. Use a disposable test wallet.
 
 ## Development commands
 
 ```bash
-npm test                           # 11 tests; no npm dependencies
+npm test                           # SDK, regression and static-site checks; no npm dependencies
 npm run build:pages                # create dist/ standalone site
 python3 -m http.server 4173 --directory dist
 # open http://localhost:4173
@@ -90,7 +88,7 @@ python3 -m http.server 4173 --directory dist
 
 The old **v0.2 Node demo** is still available via `cp .env.example .env && npm start` (`http://localhost:3000`). It uses a local JSON registration database and is retained as a legacy experiment. **It is NOT the serverless GitHub Pages app**; use the `site/` source and `dist/` artifact instead. No Node process is needed on a machine merely visiting the hosted website.
 
-GitHub Actions: `.github/workflows/ci.yml` tests the SDK and compiles Solidity, and `.github/workflows/pages.yml` builds and deploys the static website. GitHub Pages must be enabled using GitHub's **Settings → Pages → GitHub Actions** control.
+GitHub Actions: `.github/workflows/ci.yml` tests the SDK, checks that the static site can be built, and compiles Solidity. GitHub Pages itself is configured under **Settings → Pages → Deploy from a branch → main → /(root)**; its built-in Pages build publishes the repository, with the root redirect pointing to `site/`. The self-hosted `dist/` bundle is generated separately by `npm run build:pages`.
 
 ## Security and limitations
 
