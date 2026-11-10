@@ -8,7 +8,7 @@
 
 ## Quickest way to use the GitHub Pages website
 
-1. GitHub Pages uses **Deploy from a branch → main → /(root)** in this repository. The root `index.html` sends visitors to the browser app in `site/`; `site/stake.js` bridges to the SDK in `src/`. GitHub publishes changes through its built-in **pages build and deployment** action. The expected site URL is `https://ballerburg9005.github.io/stake4karma/`. For the public recovery page, use `https://ballerburg9005.github.io/stake4karma/recover.html`. This source layout also works on any conventional static host.
+1. GitHub Pages is configured in **Settings → Pages**, preferably with **Source → GitHub Actions**. The workflow at `.github/workflows/pages.yml` builds the self-contained `dist/` website and publishes it on each push to `main`. GitHub also supports **Deploy from a branch → main → /(root)**: the repository's root `index.html` redirects to `site/`, and `site/stake.js` loads the public SDK from `src/`. This means **both Pages publishing modes** and ordinary static hosts can serve the demo. Expected URL: `https://ballerburg9005.github.io/stake4karma/`, with recovery at `/stake4karma/recover.html`.
 2. Someone (for now, you) must deploy the **new v0.3** contract from `contracts/Stake4Karma.sol` on **Base Sepolia**. See the instructions below. A website cannot deploy it without a wallet-approved transaction.
 3. Open the hosted website, paste the **deployed contract address**, and select **Use contract**. The address is stored only in this browser's local storage. Copy **Share this board** for a URL carrying `?contract=0x…`. Later the maintainer can publish a default verified contract address in the app.
 4. Connect MetaMask (Base Sepolia), generate an Ed25519 credential key or import a Stake4Karma backup, and **download a password-encrypted backup**.
@@ -90,7 +90,7 @@ python3 -m http.server 4173 --directory dist
 
 The old **v0.2 Node demo** is still available via `cp .env.example .env && npm start` (`http://localhost:3000`). It uses a local JSON registration database and is retained as a legacy experiment. **It is NOT the serverless GitHub Pages app**; use the `site/` source and `dist/` artifact instead. No Node process is needed on a machine merely visiting the hosted website.
 
-GitHub Actions: `.github/workflows/ci.yml` tests the SDK, checks that the static site can be built, and compiles Solidity. GitHub Pages itself is configured under **Settings → Pages → Deploy from a branch → main → /(root)**; its built-in Pages build publishes the repository, with the root redirect pointing to `site/`. The self-hosted `dist/` bundle is generated separately by `npm run build:pages`.
+GitHub Actions: `.github/workflows/ci.yml` tests the SDK, checks the standalone static build, and compiles Solidity. `.github/workflows/pages.yml` builds and deploys the site when GitHub Pages **Source** is set to **GitHub Actions** (recommended). The alternative **Deploy from a branch → main → /(root)** source also works through the root redirect and module bridge. Independent self-hosting uses `npm run build:pages`.
 
 ## Security and limitations
 
