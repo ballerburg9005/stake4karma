@@ -20,7 +20,7 @@ jobs:
       - name: Check standalone static-site build
         run: npm run build:pages
       - name: Install isolated integration test dependencies
-        run: npm ci --prefix integration --no-audit --no-fund
+        run: npm install --prefix integration --no-audit --no-fund
       - name: Run real EVM escrow lifecycle tests (simulated funds)
         run: npm run test:integration
       - name: Compile Solidity escrow with solc 0.8.30
