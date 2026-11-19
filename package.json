@@ -10,7 +10,8 @@
   "scripts": {
     "start": "node server.js",
     "test": "node --test",
-    "build:pages": "node scripts/build-pages.mjs"
+    "build:pages": "node scripts/build-pages.mjs",
+    "test:integration": "node integration/e2e.mjs"
   },
   "engines": {
     "node": ">=22"

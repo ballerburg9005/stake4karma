@@ -1,0 +1,12 @@
+{
+  "name": "stake4karma-e2e",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Optional local-EVM integration tests using simulated funds",
+  "dependencies": {
+    "ethers": "6.15.0",
+    "ganache": "7.9.2",
+    "solc": "0.8.30"
+  }
+}

@@ -92,6 +92,17 @@ The old **v0.2 Node demo** is still available via `cp .env.example .env && npm s
 
 GitHub Actions: `.github/workflows/ci.yml` tests the SDK, checks the standalone static build, and compiles Solidity. `.github/workflows/pages.yml` builds and deploys the site when GitHub Pages **Source** is set to **GitHub Actions** (recommended). The alternative **Deploy from a branch → main → /(root)** source also works through the root redirect and module bridge. Independent self-hosting uses `npm run build:pages`.
 
+## Reproducible local EVM integration tests
+
+The optional `integration/e2e.mjs` test deploys a fresh contract to a **disposable in-process EVM** and checks native ETH and ERC-20 deposits, locked-balance verification, identity signatures, replay protection, exit delays, and withdrawals. It does not use real funds or any deployed wallet.
+
+```bash
+npm ci --prefix integration --no-audit --no-fund
+npm run test:integration
+```
+
+GitHub Actions also runs these integration tests. The regular `npm test` stays dependency-free.
+
 ## Security and limitations
 
 - **Only testnet assets.** No audit, live-wallet end-to-end test or formal verification. Mistakes in contracts can trap funds. Do not use real value yet.
